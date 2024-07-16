@@ -27,3 +27,11 @@ Then, run the server in root under development mode:
 ```
 fastapi dev simple_fl/server.py
 ```
+
+After that, we can run client on different server:
+
+```
+python client.py --client_id client_123 --client_secret my_secret_key --train_script train_script/dry-run.py
+```
+
+The example used the demo train script `dry-run.py`.
