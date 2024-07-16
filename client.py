@@ -118,7 +118,7 @@ def main_loop(client_id, client_secret, train_func):
     """
     training_args = TrainingArguments(
         output_dir=os.path.join("output_results", client_id),
-        num_train_epochs=3,
+        num_train_epochs=1,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=16,
         warmup_steps=500,
