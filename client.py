@@ -167,7 +167,7 @@ def train():
         eval_dataset=train_setting["tokenized_eval_dataset"],
     )
 
-    # trainer.train()
+    trainer.train()
 
     trainer.save_model(local_weight_dir)
 
