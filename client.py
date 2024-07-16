@@ -3,6 +3,7 @@ import os
 import argparse
 import importlib
 import time
+import shutil
 
 # Server URL
 SERVER_URL = "http://127.0.0.1:8000"
@@ -48,18 +49,27 @@ def register_client(client_id, client_secret):
 
 def upload_weights(client_id, client_secret):
     """
-    Upload model weights to the server.
+    Uploads the entire weights directory to the server as a zip file.
     """
+    # Create a zip file of the local_weight_dir
+    zip_filename = os.path.basename(local_weight_dir) + ".zip"
+    shutil.make_archive(os.path.splitext(zip_filename)[0], 'zip', local_weight_dir)
+
+    # Upload the zip file
     url = f"{SERVER_URL}/upload/"
-    with open(os.path.join(local_weight_dir, "training_args.bin"), "rb") as f:
-        files = {"model": (os.path.basename(local_weight_dir), f, "application/octet-stream")}
+    with open(zip_filename, "rb") as f:
+        files = {"model": (zip_filename, f, "application/zip")}
         data = {"client_id": client_id, "client_secret": client_secret}
         response = requests.post(url, files=files, data=data)
+
         if response.status_code == 200:
             print("Weights uploaded successfully!")
             train_setting["token"] = response.json()["data"]["token"]
         else:
             print("Failed to upload weights:", response.json())
+
+    # Clean up the zip file after upload
+    os.remove(zip_filename)
 
 def download_weights(client_id, client_secret, token):
     """
@@ -77,7 +87,7 @@ def download_weights(client_id, client_secret, token):
             print("No merged model available for token", token)
             print(response.json())
         else:
-            with open(os.path.join(local_weight_dir , f"{client_id}_{token}.download.pt"), "wb") as f:
+            with open(os.path.join(local_weight_dir , f"adapter_model.safetensors"), "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             print("Weights downloaded successfully!")
