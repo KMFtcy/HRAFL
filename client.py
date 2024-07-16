@@ -8,7 +8,7 @@ import time
 SERVER_URL = "http://127.0.0.1:8000"
 
 # Local file path for model weights
-local_weight_file = ""
+local_weight_dir = ""
 
 # Training settings
 train_setting = {}
@@ -51,8 +51,8 @@ def upload_weights(client_id, client_secret):
     Upload model weights to the server.
     """
     url = f"{SERVER_URL}/upload/"
-    with open(local_weight_file, "rb") as f:
-        files = {"model": (os.path.basename(local_weight_file), f, "application/octet-stream")}
+    with open(os.path.join(local_weight_dir, "training_args.bin"), "rb") as f:
+        files = {"model": (os.path.basename(local_weight_dir), f, "application/octet-stream")}
         data = {"client_id": client_id, "client_secret": client_secret}
         response = requests.post(url, files=files, data=data)
         if response.status_code == 200:
@@ -77,7 +77,7 @@ def download_weights(client_id, client_secret, token):
             print("No merged model available for token", token)
             print(response.json())
         else:
-            with open(local_weight_file + ".download", "wb") as f:
+            with open(os.path.join(local_weight_dir , f"{client_id}_{token}.download.pt"), "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             print("Weights downloaded successfully!")
@@ -107,7 +107,7 @@ def main_loop(client_id, client_secret, train_model):
     """
     while True:
         trainer = train_model()
-        trainer.save_model(local_weight_file)
+        trainer.save_model(local_weight_dir)
         upload_weights(client_id, client_secret)
 
         # Polling to check if the model is ready for download
@@ -135,6 +135,6 @@ if __name__ == "__main__":
     # Load train script
     train_func = import_train_function(args.train_script)
     # set local file name
-    local_weight_file = "args.client_id" + "_train"
+    local_weight_dir = args.client_id + "_train"
     # Enter the training-upload-download loop
     main_loop(args.client_id, args.client_secret, train_func)

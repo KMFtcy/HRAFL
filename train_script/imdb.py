@@ -63,4 +63,13 @@ def train():
         eval_dataset=tokenized_eval_dataset,
     )
 
+    trainer.train()
+
+    # trainer.save_model("./my_lora_bert")
+
     return trainer
+
+# verification
+classifier = pipeline("sentiment-analysis", model="./my_lora_bert")
+result = classifier("This is a great movie!")
+print(result)
