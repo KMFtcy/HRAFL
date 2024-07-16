@@ -1,6 +1,7 @@
 import requests
 import os
 import argparse
+import importlib
 
 # Server URL
 SERVER_URL = "http://127.0.0.1:8000"
@@ -52,16 +53,33 @@ def download_weights(client_id, client_secret):
     else:
         print("Failed to download weights:", response.json())
 
-def train_model():
-    """
-    Model training and saving weights to a file.
-    """
-    print("Training model...")
-    # Training code goes here (this is just a placeholder)
-    # train()
-    print("Training completed!")
+def import_train_function(file_path):
+    # Extract the module name from the file path
+    module_name = os.path.splitext(os.path.basename(file_path))[0]
+    
+    # Load the module from the given file path
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    
+    # Get the train function from the module
+    train_function = getattr(module, 'train', None)
+    
+    if train_function is None:
+        raise AttributeError(f"The module '{module_name}' does not have a 'train' function.")
+    
+    return train_function
 
-def main_loop(client_id, client_secret):
+# def train_model():
+#     """
+#     Model training and saving weights to a file.
+#     """
+#     print("Training model...")
+#     # Training code goes here (this is just a placeholder)
+#     # train()
+#     print("Training completed!")
+
+def main_loop(client_id, client_secret, train_model):
     """
     Main loop for training, uploading, and downloading weights.
     """
@@ -76,10 +94,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Client for training and uploading model weights.")
     parser.add_argument("--client_id", required=True, help="Client ID for registration and authentication")
     parser.add_argument("--client_secret", required=True, help="Client Secret for registration and authentication")
+    parser.add_argument("--train_script", required=True, help="Client Train Script")
 
     args = parser.parse_args()
 
     # Register the client
     register_client(args.client_id, args.client_secret)
+    # load train script
+    train_func = import_train_function(args.train_script)
     # Enter the training-upload-download loop
-    main_loop(args.client_id, args.client_secret)
+    main_loop(args.client_id, args.client_secret, train_func)
