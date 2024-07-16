@@ -56,28 +56,19 @@ def download_weights(client_id, client_secret):
 def import_train_function(file_path):
     # Extract the module name from the file path
     module_name = os.path.splitext(os.path.basename(file_path))[0]
-    
+
     # Load the module from the given file path
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    
+
     # Get the train function from the module
     train_function = getattr(module, 'train', None)
-    
+
     if train_function is None:
         raise AttributeError(f"The module '{module_name}' does not have a 'train' function.")
-    
-    return train_function
 
-# def train_model():
-#     """
-#     Model training and saving weights to a file.
-#     """
-#     print("Training model...")
-#     # Training code goes here (this is just a placeholder)
-#     # train()
-#     print("Training completed!")
+    return train_function
 
 def main_loop(client_id, client_secret, train_model):
     """
