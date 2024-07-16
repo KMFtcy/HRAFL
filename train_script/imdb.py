@@ -56,6 +56,6 @@ def train(training_args):
     return trainer
 
 # verification
-classifier = pipeline("sentiment-analysis", model="./my_lora_bert")
-result = classifier("This is a great movie!")
-print(result)
+# classifier = pipeline("sentiment-analysis", model="./my_lora_bert")
+# result = classifier("This is a great movie!")
+# print(result)
