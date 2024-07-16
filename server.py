@@ -15,7 +15,7 @@ app = FastAPI()
 UPLOAD_DIRECTORY = "./uploaded_files"
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
-MERGED_MODEL_DIRECTORY = "./uploaded_files"
+MERGED_MODEL_DIRECTORY = "./merged_models"
 if not os.path.exists(MERGED_MODEL_DIRECTORY):
     os.makedirs(MERGED_MODEL_DIRECTORY)
 
@@ -23,22 +23,13 @@ if not os.path.exists(MERGED_MODEL_DIRECTORY):
 clients_db = {}
 upload_record = {}
 
-
 def average_lora_models(model_dirs, weights):
-    # 加载第一个模型的state_dict
     state_dict_a = storch.load_file(f"{model_dirs[0]}/adapter_model.safetensors")
-
-    # 初始化一个字典来存储加权后的参数
     averaged_state_dict = {k: weights[0] * v for k, v in state_dict_a.items()}
-
-    # 对于每个额外的模型
     for i in range(1, len(model_dirs)):
         state_dict_i = storch.load_file(f"{model_dirs[i]}/adapter_model.safetensors")
-
-        # 将当前模型的参数加权累加到averaged_state_dict中
         for k, v in state_dict_i.items():
             averaged_state_dict[k] = averaged_state_dict.get(k, 0) + weights[i] * v
-
     return averaged_state_dict
 
 class RegisterRquestModel(BaseModel):
@@ -128,7 +119,7 @@ async def download_file(token: int, client_id: str, client_secret: str):
 @app.get("/check_download")
 async def check_download(token: int, client_id: str, client_secret: str):
     validate_client(client_id, client_secret)
-    merged_file_path = os.path.join(UPLOAD_DIRECTORY, f'merged_model_{token}.safetensors')
+    merged_file_path = os.path.join(MERGED_MODEL_DIRECTORY, f'merged_model_{token}.safetensors')
 
     if os.path.exists(merged_file_path):
         return JSONResponse(status_code=200, content={"status": 1000})
