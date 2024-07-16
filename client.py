@@ -8,7 +8,7 @@ import time
 SERVER_URL = "http://127.0.0.1:8000"
 
 # Local file path for model weights
-local_weight_file = "model_weights.pt"
+local_weight_file = ""
 
 # Training settings
 train_setting = {}
@@ -106,7 +106,8 @@ def main_loop(client_id, client_secret, train_model):
     Main loop for training, uploading, and downloading weights.
     """
     while True:
-        train_model()
+        trainer = train_model()
+        trainer.save_model(local_weight_file)
         upload_weights(client_id, client_secret)
 
         # Polling to check if the model is ready for download
@@ -133,5 +134,7 @@ if __name__ == "__main__":
     register_client(args.client_id, args.client_secret)
     # Load train script
     train_func = import_train_function(args.train_script)
+    # set local file name
+    local_weight_file = "args.client_id" + "_train"
     # Enter the training-upload-download loop
     main_loop(args.client_id, args.client_secret, train_func)
