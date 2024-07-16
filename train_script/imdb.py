@@ -9,12 +9,12 @@ import os
 from transformers import AdamW
 os.environ["WANDB_MODE"] = "dryrun"
 
-def train(training_args):
+def train(training_args, basemodel, model_path):
     dataset = load_dataset("imdb")
     train_dataset = dataset["train"]
     eval_dataset = dataset["test"]
 
-    model_checkpoint = "bert-base-uncased"
+    model_checkpoint = basemodel
     tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
 
     def preprocess_function(examples):

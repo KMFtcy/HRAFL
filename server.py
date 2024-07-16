@@ -67,7 +67,7 @@ def merge_models_task(current_token):
     model_paths = [os.path.join(UPLOAD_DIRECTORY, client_id, str(current_token - 1)) for client_id in clients_db.keys()]
     weights = [1.0 / len(model_paths)] * len(model_paths)  # equal weights
     averaged_state_dict = average_lora_models(model_paths, weights)
-    torch.save(averaged_state_dict, os.path.join(MERGED_MODEL_DIRECTORY, f'merged_model_{current_token}.safetensors'))
+    storch.save_file(averaged_state_dict, os.path.join(MERGED_MODEL_DIRECTORY, f'merged_model_{current_token}.safetensors'))
 
 @app.post("/upload")
 async def upload_file(

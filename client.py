@@ -5,6 +5,17 @@ import importlib
 import time
 import shutil
 from transformers import TrainingArguments, Trainer
+from datasets import load_dataset
+from transformers import AutoTokenizer
+from transformers import AutoModelForSequenceClassification, get_linear_schedule_with_warmup
+from peft import get_peft_model, LoraConfig
+from peft import PeftModel
+from transformers import TrainingArguments, Trainer
+from transformers import pipeline
+from transformers import get_linear_schedule_with_warmup
+import os
+from transformers import AdamW
+os.environ["WANDB_MODE"] = "dryrun"
 
 # Server URL
 SERVER_URL = "http://127.0.0.1:8000"
@@ -112,26 +123,73 @@ def import_train_function(file_path):
 
     return train_function
 
-def main_loop(client_id, client_secret, train_func):
-    """
-    Main loop for training, uploading, and downloading weights.
-    """
+def train():
+    model = AutoModelForSequenceClassification.from_pretrained(train_setting["model_checkpoint"], num_labels=2)
+    train_setting["peft_config"] = LoraConfig(
+        r=8,
+        lora_alpha=32,
+        target_modules=["query", "key", "value"],
+        lora_dropout=0.05,
+        bias="none",
+        task_type="SEQ_CLS"
+    )
+    if not os.path.exists(local_weight_dir):
+        model = get_peft_model(model, train_setting["peft_config"])
+    else:
+        print("Found local weights, loading from", local_weight_dir)
+        model = PeftModel.from_pretrained(model, local_weight_dir)
+
+    optimizer = AdamW(model.parameters(), lr=2e-5)
+
     training_args = TrainingArguments(
-        output_dir=os.path.join("output_results", client_id),
+        output_dir=os.path.join("output_results", str(train_setting["token"]), local_weight_dir),
         num_train_epochs=1,
         per_device_train_batch_size=8,
         per_device_eval_batch_size=16,
         warmup_steps=500,
         weight_decay=0.01,
-        logging_dir=os.path.join("logs", client_id),
+        logging_dir=os.path.join("logs", str(train_setting["token"]), local_weight_dir),
         logging_steps=10,
         save_strategy="epoch",
         evaluation_strategy="epoch",
         max_grad_norm=1.0
     )
+
+    # create learning rate adaptor
+    num_training_steps = len(train_setting["dataset"]['train']) // training_args.per_device_train_batch_size * training_args.num_train_epochs
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=training_args.warmup_steps, num_training_steps=num_training_steps)
+
+
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_setting["tokenized_train_dataset"],
+        eval_dataset=train_setting["tokenized_eval_dataset"],
+    )
+
+    # trainer.train()
+
+    trainer.save_model(local_weight_dir)
+
+    return trainer
+
+def main_loop(client_id, client_secret):
+    """
+    Main loop for training, uploading, and downloading weights.
+    """
+    train_setting["dataset"] = load_dataset("imdb")
+    train_setting["train_dataset"] = train_setting["dataset"]["train"]
+    train_setting["eval_dataset"] = train_setting["dataset"]["test"]
+    train_setting["model_checkpoint"] = "bert-base-uncased"
+    train_setting["tokenizer"] = AutoTokenizer.from_pretrained(train_setting["model_checkpoint"])
+    def preprocess_function(examples):
+        return train_setting["tokenizer"](examples["text"], truncation=True, padding="max_length")
+    train_setting["tokenized_train_dataset"] = train_setting["train_dataset"].map(preprocess_function, batched=True)
+    train_setting["tokenized_eval_dataset"] = train_setting["eval_dataset"].map(preprocess_function, batched=True)
+
     while True:
-        trainer = train_func(training_args)
-        trainer.save_model(local_weight_dir)
+        train()
+        # trainer = train_func(training_args, "bert-base-uncased", local_weight_dir)
         upload_weights(client_id, client_secret)
 
         # Polling to check if the model is ready for download
@@ -156,9 +214,7 @@ if __name__ == "__main__":
 
     # Register the client
     register_client(args.client_id, args.client_secret)
-    # Load train script
-    train_func = import_train_function(args.train_script)
-    # set local file name
+    # set global setting
     local_weight_dir = args.client_id + "_train"
     # Enter the training-upload-download loop
-    main_loop(args.client_id, args.client_secret, train_func)
+    main_loop(args.client_id, args.client_secret)
