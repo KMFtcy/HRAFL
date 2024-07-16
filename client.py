@@ -4,6 +4,7 @@ import argparse
 import importlib
 import time
 import shutil
+from transformers import TrainingArguments, Trainer
 
 # Server URL
 SERVER_URL = "http://127.0.0.1:8000"
@@ -111,12 +112,25 @@ def import_train_function(file_path):
 
     return train_function
 
-def main_loop(client_id, client_secret, train_model):
+def main_loop(client_id, client_secret, train_func):
     """
     Main loop for training, uploading, and downloading weights.
     """
+    training_args = TrainingArguments(
+        output_dir=os.path.join("output_results", client_id),
+        num_train_epochs=3,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=16,
+        warmup_steps=500,
+        weight_decay=0.01,
+        logging_dir=os.path.join("logs", client_id),
+        logging_steps=10,
+        save_strategy="epoch",
+        evaluation_strategy="epoch",
+        max_grad_norm=1.0
+    )
     while True:
-        trainer = train_model()
+        trainer = train_func(training_args)
         trainer.save_model(local_weight_dir)
         upload_weights(client_id, client_secret)
 

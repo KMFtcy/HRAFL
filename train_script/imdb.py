@@ -9,7 +9,7 @@ import os
 from transformers import AdamW
 os.environ["WANDB_MODE"] = "dryrun"
 
-def train():
+def train(training_args):
     dataset = load_dataset("imdb")
     train_dataset = dataset["train"]
     eval_dataset = dataset["test"]
@@ -34,20 +34,6 @@ def train():
 
     model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=2)
     model = get_peft_model(model, peft_config)
-
-    training_args = TrainingArguments(
-        output_dir="./results",
-        num_train_epochs=3,
-        per_device_train_batch_size=8,
-        per_device_eval_batch_size=16,
-        warmup_steps=500,
-        weight_decay=0.01,
-        logging_dir="./logs",
-        logging_steps=10,
-        save_strategy="epoch",
-        evaluation_strategy="epoch",
-        max_grad_norm=1.0
-    )
 
     optimizer = AdamW(model.parameters(), lr=2e-5)
 
