@@ -4,6 +4,8 @@ import argparse
 import importlib
 import time
 import shutil
+import logging
+from datetime import datetime
 from transformers import TrainingArguments, Trainer
 from datasets import load_dataset
 from transformers import AutoTokenizer
@@ -25,6 +27,9 @@ local_weight_dir = ""
 
 # Training settings
 train_setting = {}
+
+# logger
+logger = None
 
 def check_download_status(client_id, client_secret, token):
     """
@@ -188,16 +193,23 @@ def main_loop(client_id, client_secret):
     train_setting["tokenized_eval_dataset"] = train_setting["eval_dataset"].map(preprocess_function, batched=True)
 
     while True:
+        logger.info("5001: Start training")
         train()
+        logger.info("5002: finish training")
         # trainer = train_func(training_args, "bert-base-uncased", local_weight_dir)
+        logger.info("5003: start uploading")
         upload_weights(client_id, client_secret)
+        logger.info("5004: finish uploading")
 
         # Polling to check if the model is ready for download
+        logger.info("5005: check if merged")
         while True:
             status = check_download_status(client_id, client_secret, train_setting["token"])
             if status == 1000:
                 print("Weights aggregated successfully!")
+                logger.info("5006: merged, start downloading")
                 download_weights(client_id, client_secret, train_setting["token"])
+                logger.info("5007: model downloaded")
                 break
             else:
                 print("Model not ready, waiting 1 second...")
@@ -211,6 +223,18 @@ if __name__ == "__main__":
     parser.add_argument("--train_script", required=True, help="Client Train Script")
 
     args = parser.parse_args()
+
+    # loggin setting
+    current_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    log_filename = f'{args.client_id}_{current_time}.log'
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        filename=log_filename,
+        filemode='a'
+    )
+    logger = logging.getLogger('my_logger')
 
     # Register the client
     register_client(args.client_id, args.client_secret)
